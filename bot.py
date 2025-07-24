@@ -63,7 +63,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ask", handle_ask))  # گروپ چیٹ کمانڈ
 
-    app.add_handler(MessageHandler(filters.PRIVATE & filters.TEXT, handle_private))  # صرف پرائیویٹ چیٹ
+    app.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.TEXT, handle_private))# صرف پرائیویٹ چیٹ
 
     print("✅ Bot is running...")
     app.run_polling()
