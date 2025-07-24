@@ -33,7 +33,7 @@ def save_user_data(user_id, message):
 def fetch_api_reply(message: str) -> str:
     try:
         encoded_msg = quote(message)
-        url = f"https://apis.davidcyriltech.my.id/ai/gpt4?text={encoded_msg}"
+        url = f"https://apis.davidcyriltech.my.id/ai/chatbot?query={encoded_msg}"
         response = requests.get(url, timeout=10)
         data = response.json()
 
@@ -84,3 +84,4 @@ if __name__ == "__main__":
 
     print("✅ Bot is running...")
     app.run_polling()
+    
