@@ -38,7 +38,7 @@ def fetch_api_reply(message: str) -> str:
         data = response.json()
 
         if data.get("success"):
-            return data.get("message", "✅ API succeeded but no message returned.")
+            return data.get("result", "✅ API succeeded but no message returned.")
         else:
             return "❌ API did not return a valid response."
     except Exception as e:
@@ -60,7 +60,7 @@ async def handle_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- Handle /ask in group chats only (no data saving) ---
 async def handle_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.args:
-        message = " ".join(context.args)
+        result = " ".join(context.args)
         reply = fetch_api_reply(message)
         await update.message.reply_text(reply)
     else:
