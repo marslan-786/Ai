@@ -1,68 +1,69 @@
 import os
-import logging
-import requests
+import json
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
 )
 
-USER_DATA_DIR = "data_users"
-os.makedirs(USER_DATA_DIR, exist_ok=True)
+# --- کنفگریشن ---
+BOT_TOKEN = os.getenv("BOT_TOKEN") or "آپ_کا_بوٹ_ٹوکن"
+USER_FOLDER = "users"
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = str(update.message.from_user.id)
-    user_file = os.path.join(USER_DATA_DIR, f"{user_id}.txt")
+# --- فولڈر بنائیں اگر موجود نہیں ---
+if not os.path.exists(USER_FOLDER):
+    os.makedirs(USER_FOLDER)
 
-    # Load previous conversation or start fresh
-    if os.path.exists(user_file):
-        with open(user_file, "r", encoding="utf-8") as f:
-            previous_text = f.read()
+
+# --- ڈیٹا محفوظ کرنے کا فنکشن ---
+def save_user_data(user_id, message):
+    filepath = os.path.join(USER_FOLDER, f"{user_id}.json")
+    data = {"chat": message}
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+# --- AI یا جو بھی API ریسپانس چاہیے ---
+async def get_response(message: str) -> str:
+    # یہاں اصل API کال لگائیں
+    return f"🤖 جواب: {message}"
+
+
+# --- پرائیویٹ چیٹ میں ہینڈلنگ ---
+async def handle_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    message = update.message.text
+    save_user_data(user_id, message)
+    reply = await get_response(message)
+    await update.message.reply_text(reply)
+
+
+# --- گروپ چیٹ میں صرف /ask کمانڈ سے بات چیت ---
+async def handle_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.args:
+        message = " ".join(context.args)
+        reply = await get_response(message)
+        await update.message.reply_text(reply)
     else:
-        previous_text = ""
+        await update.message.reply_text("❌ برائے مہربانی سوال کے ساتھ استعمال کریں:\n`/ask آپ کا سوال`")
 
-    # Append new message
-    new_user_text = update.message.text.strip()
-    if previous_text:
-        # Join previous with new separated by newline for clarity
-        combined_text = previous_text + "\nUser: " + new_user_text
-    else:
-        combined_text = "User: " + new_user_text
 
-    # Save combined text back to file for future use
-    with open(user_file, "w", encoding="utf-8") as f:
-        f.write(combined_text)
+# --- اسٹارٹ کمانڈ ---
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("👋 خوش آمدید! پرائیویٹ چیٹ میں کچھ بھی لکھیں، گروپ میں `/ask سوال` کے ذریعے پوچھیں۔")
 
-    # Prepare URL encode text param (safe)
-    import urllib.parse
-    encoded_text = urllib.parse.quote(combined_text)
 
-    api_url = f"https://apis.davidcyriltech.my.id/ai/gpt4?text={encoded_text}"
-
-    try:
-        response = requests.get(api_url)
-        data = response.json()
-
-        if data.get("success"):
-            reply_message = data.get("message", "No message received from AI.")
-            # Append AI response to conversation file as well
-            updated_text = combined_text + "\nAI: " + reply_message
-            with open(user_file, "w", encoding="utf-8") as f:
-                f.write(updated_text)
-        else:
-            reply_message = "❌ API error: No valid response."
-
-    except Exception as e:
-        logging.error(f"API error: {e}")
-        reply_message = "⚠️ Failed to connect to the AI API."
-
-    await update.message.reply_text(reply_message)
-
+# --- مین فنکشن ---
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("ask", handle_ask))  # گروپ چیٹ کمانڈ
+
+    app.add_handler(MessageHandler(filters.PRIVATE & filters.TEXT, handle_private))  # صرف پرائیویٹ چیٹ
+
+    print("✅ Bot is running...")
     app.run_polling()
