@@ -1,5 +1,5 @@
 # یہ آپ کی bot.py فائل ہے
-
+import os
 import logging
 import requests
 from telegram import Update
